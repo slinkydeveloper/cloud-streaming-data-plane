@@ -1,27 +1,27 @@
-POST http://192.168.39.47:31004
+POST http://192.168.39.47:31694
 Content-Type: application/cloudevents+json
 
 {
   "specversion" : "1.0",
   "type" : "number.demo",
   "source" : "inbound-a",
-  "id" : "1",
+  "id" : "3",
   "datacontenttype" : "text/plain",
-  "data" : "10"
+  "data" : "-10"
 }
 
 ###
 
-POST http://192.168.39.47:31477
+POST http://192.168.39.47:31057
 Content-Type: application/cloudevents+json
 
 {
   "specversion" : "1.0",
   "type" : "number.demo",
   "source" : "inbound-b",
-  "id" : "1",
+  "id" : "2",
   "datacontenttype" : "text/plain",
-  "data" : "10"
+  "data" : "-20"
 }
 
 ###

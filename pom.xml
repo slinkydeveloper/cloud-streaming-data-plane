@@ -12,6 +12,8 @@
         <module>inbound</module>
         <module>join</module>
         <module>demo-join-function</module>
+        <module>demo-join-function-with-failure</module>
+        <module>runtime</module>
     </modules>
 
     <properties>
@@ -25,6 +27,11 @@
             <groupId>io.vertx</groupId>
             <artifactId>vertx-core</artifactId>
             <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.21</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>

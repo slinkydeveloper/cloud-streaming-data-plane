@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inbound-a
+spec:
+  selector:
+    inbound: a
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: http
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inbound-a
+  labels:
+    inbound: a
+spec:
+  containers:
+    - name: inbound
+      image: docker.io/slinkydeveloper/inbound
+      imagePullPolicy: Never
+      ports:
+        - containerPort: 8080
+      env:
+        - name: NAME # Stream name
+          value: inbound-a
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: inbound-b
+spec:
+  selector:
+    inbound: b
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+      name: http
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: inbound-b
+  labels:
+    inbound: b
+spec:
+  containers:
+    - name: inbound
+      image: docker.io/slinkydeveloper/inbound
+      imagePullPolicy: Never
+      ports:
+        - containerPort: 8080
+      env:
+        - name: NAME # Stream name
+          value: inbound-b
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: aggregate
+spec:
+  volumes:
+    - name: uds-data
+      emptyDir: {}
+  containers:
+    - name: aggregator-function
+      image: docker.io/slinkydeveloper/demo-join-function-with-failure
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+    - name: aggregator-runtime
+      image: docker.io/slinkydeveloper/runtime
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: INPUT_STREAMS
+          value: inbound-a,inbound-b
+        - name: OUTPUT_STREAMS
+          value: positive,negative
+        - name: TIMEOUT
+          value: "PT5M"
+        - name: APP_ID
+          value: "demo_app"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+
+

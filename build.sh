@@ -12,3 +12,5 @@ eval $(minikube docker-env)
 build_image demo-join-function
 build_image inbound
 build_image join
+build_image demo-join-function-with-failure
+build_image runtime
