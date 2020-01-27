@@ -57,6 +57,11 @@ public class Aggregation {
     private BiConsumer<Buffer, Aggregation> onEnd;
 
     /**
+     * On failure listener
+     */
+    private BiConsumer<Buffer, Aggregation> onFailure;
+
+    /**
      * On timeout listener
      */
     private BiConsumer<Buffer, Aggregation> onTimeout;
@@ -81,12 +86,13 @@ public class Aggregation {
      */
     private Long timerId;
 
-    private Aggregation(Vertx vertx, Buffer aggregationKey, Set<String> requiredStreams, Set<String> outputStreams, KafkaProducer<Buffer, Buffer> producer, BiConsumer<Buffer, Aggregation> onEnd, BiConsumer<Buffer, Aggregation> onTimeout, Duration waitEventsTimeout, FunctionInvoker functionInvoker) {
+    private Aggregation(Vertx vertx, Buffer aggregationKey, Set<String> requiredStreams, Set<String> outputStreams, KafkaProducer<Buffer, Buffer> producer, BiConsumer<Buffer, Aggregation> onEnd, BiConsumer<Buffer, Aggregation> onFailure, BiConsumer<Buffer, Aggregation> onTimeout, Duration waitEventsTimeout, FunctionInvoker functionInvoker) {
         this.vertx = vertx;
         this.aggregationKey = aggregationKey;
         this.requiredStreams = requiredStreams;
         this.outputStreams = outputStreams;
         this.producer = producer;
+        this.onFailure = onFailure;
         this.waitEventsTimeout = waitEventsTimeout;
         this.functionInvoker = functionInvoker;
         this.receivedRecords = new HashMap<>();
@@ -174,7 +180,7 @@ public class Aggregation {
 
     private void handleFailure(Throwable exception) {
         logger.error("Failure in aggregation for key " + aggregationKey.toString(), exception);
-        handleEnd();
+        this.onFailure.accept(this.aggregationKey, this);
     }
 
     private void handleEnd() {
@@ -210,6 +216,7 @@ public class Aggregation {
         private Set<String> requiredStreams;
         private Set<String> outputStreams;
         private BiConsumer<Buffer, Aggregation> onEnd;
+        private BiConsumer<Buffer, Aggregation> onFailure;
         private BiConsumer<Buffer, Aggregation> onTimeout;
         private Duration timeout;
         private FunctionInvoker functionInvoker;
@@ -240,6 +247,11 @@ public class Aggregation {
             return this;
         }
 
+        public Aggregation.Builder setOnFailure(BiConsumer<Buffer, Aggregation> onFailure) {
+            this.onFailure = onFailure;
+            return this;
+        }
+
         public Aggregation.Builder setOnTimeout(BiConsumer<Buffer, Aggregation> onTimeout) {
             this.onTimeout = onTimeout;
             return this;
@@ -266,10 +278,11 @@ public class Aggregation {
             Objects.requireNonNull(requiredStreams);
             Objects.requireNonNull(outputStreams);
             Objects.requireNonNull(onEnd);
+            Objects.requireNonNull(onFailure);
             Objects.requireNonNull(onTimeout);
             Objects.requireNonNull(functionInvoker);
             Objects.requireNonNull(producer);
-            return new Aggregation(vertx, aggregationKey, requiredStreams, outputStreams, producer, onEnd, onTimeout, timeout, functionInvoker);
+            return new Aggregation(vertx, aggregationKey, requiredStreams, outputStreams, producer, onEnd, onFailure, onTimeout, timeout, functionInvoker);
         }
 
     }

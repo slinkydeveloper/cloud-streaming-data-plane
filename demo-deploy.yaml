@@ -75,33 +75,33 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: join
+  name: aggregate
 spec:
   volumes:
     - name: uds-data
       emptyDir: {}
   containers:
-    - name: join-function
+    - name: aggregator-function
       image: docker.io/slinkydeveloper/demo-join-function
       imagePullPolicy: Never
       volumeMounts:
         - name: uds-data
           mountPath: /data
-    - name: join-runtime
-      image: docker.io/slinkydeveloper/join
+    - name: aggregator-runtime
+      image: docker.io/slinkydeveloper/runtime
       imagePullPolicy: Never
       volumeMounts:
         - name: uds-data
           mountPath: /data
       env:
-        - name: LEFT_STREAM
-          value: inbound-a
-        - name: RIGHT_STREAM
-          value: inbound-b
-        - name: SUCCESS_STREAM
-          value: outbound
-        - name: WINDOW_LENGTH
+        - name: INPUT_STREAMS
+          value: inbound_a,inbound_b
+        - name: OUTPUT_STREAMS
+          value: positive,negative
+        - name: TIMEOUT
           value: "PT5M"
+        - name: APP_ID
+          value: "demo_app"
         - name: KAFKA_BROKERS
           value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
 

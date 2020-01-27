@@ -1,11 +1,6 @@
-FROM adoptopenjdk/openjdk13:alpine-slim
+FROM scratch
 
-ENV VERTICLE_FILE target/demo-join-function-1.0-SNAPSHOT-jar-with-dependencies.jar
-ENV VERTICLE_HOME /usr/verticles
-ENV PORT 8080
+# To build it: cargo build --target x86_64-unknown-linux-musl --release
+COPY target/x86_64-unknown-linux-musl/release/function /app
 
-COPY $VERTICLE_FILE $VERTICLE_HOME/demo-join-function.jar
-
-WORKDIR $VERTICLE_HOME
-ENTRYPOINT ["sh", "-c"]
-CMD ["java -jar $VERTICLE_HOME/demo-join-function.jar"]
+CMD ["/app"]
