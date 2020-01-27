@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 public class FunctionInvoker {
 
     public static SocketAddress UDS_FUNCTION_ADDRESS = SocketAddress.domainSocketAddress("/data/function");
+    public static String BUNDLE_CONTENT_TYPE = "application/cloudevents-bundle+json";
 
     private WebClient client;
 
@@ -29,7 +30,8 @@ public class FunctionInvoker {
     public Future<Map<String, Buffer>> call(Map<String, KafkaConsumerRecord<Buffer, Buffer>> in) {
         return client
             .request(HttpMethod.POST, UDS_FUNCTION_ADDRESS, "/")
-            .sendJson(createRequestBody(in))
+            .putHeader("content-type", BUNDLE_CONTENT_TYPE)
+            .sendBuffer(createRequestBody(in))
             .compose(response -> {
                 if (response.statusCode() >= 400) {
                     return Future.failedFuture("Error happened in user function invocation. Status code: " + response.statusCode());
@@ -40,12 +42,13 @@ public class FunctionInvoker {
             .map(this::parseResponse);
     }
 
-    private JsonObject createRequestBody(Map<String, KafkaConsumerRecord<Buffer, Buffer>> in) {
+    private Buffer createRequestBody(Map<String, KafkaConsumerRecord<Buffer, Buffer>> in) {
         return in
             .values()
             .stream()
             .map(e -> new JsonObject().put(e.topic(), new JsonObject(e.value())))
-            .reduce(new JsonObject(), JsonObject::mergeIn);
+            .reduce(new JsonObject(), JsonObject::mergeIn)
+            .toBuffer();
     }
 
     private Map<String, Buffer> parseResponse(JsonObject response) {

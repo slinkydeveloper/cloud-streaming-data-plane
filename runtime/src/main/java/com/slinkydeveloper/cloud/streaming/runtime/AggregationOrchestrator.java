@@ -6,7 +6,6 @@ import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Marker;
 
 import java.time.Duration;
 import java.util.*;
@@ -63,6 +62,13 @@ public class AggregationOrchestrator {
     }
 
     public void onAggregationInstanceTimeout(Buffer key, Aggregation aggregation) {
+        //TODO implement strategies
+        instances.get(key).remove(aggregation);
+        triggerExecution();
+    }
+
+    public void onAggregationInstanceFailure(Buffer key, Aggregation aggregation) {
+        //TODO implement strategies
         instances.get(key).remove(aggregation);
         triggerExecution();
     }
@@ -97,6 +103,7 @@ public class AggregationOrchestrator {
           .setRequiredStreams(requiredInputStreams)
           .setTimeout(timeout)
           .setOnEnd(this::onAggregationInstanceEnd)
+          .setOnFailure(this::onAggregationInstanceFailure)
           .setOnTimeout(this::onAggregationInstanceTimeout)
           .setFunctionInvoker(functionInvoker)
           .setProducer(producer)
