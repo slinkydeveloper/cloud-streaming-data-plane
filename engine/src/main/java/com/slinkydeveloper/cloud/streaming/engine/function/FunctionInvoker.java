@@ -1,6 +1,6 @@
 package com.slinkydeveloper.cloud.streaming.engine.function;
 
-import com.slinkydeveloper.cloud.streaming.engine.messaging.Message;
+import io.cloudevents.CloudEvent;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -27,7 +27,7 @@ public class FunctionInvoker {
 
     // SUPER INEFFICIENT but it's a demo
     // In next iterations the invocation could be done preparing multipart envelopes
-    public Future<Map<String, Buffer>> call(Map<String, Message> in) {
+    public Future<Map<String, CloudEvent>> call(Map<String, CloudEvent> in) {
         return client
             .request(HttpMethod.POST, UDS_FUNCTION_ADDRESS, "/")
             .putHeader("content-type", BUNDLE_CONTENT_TYPE)
@@ -42,7 +42,7 @@ public class FunctionInvoker {
             .map(this::parseResponse);
     }
 
-    private Buffer createRequestBody(Map<String, KafkaConsumerRecord<Buffer, Buffer>> in) {
+    private Buffer createRequestBody(Map<String, CloudEvent> in) {
         return in
             .values()
             .stream()
@@ -51,13 +51,13 @@ public class FunctionInvoker {
             .toBuffer();
     }
 
-    private Map<String, Buffer> parseResponse(JsonObject response) {
+    private Map<String, CloudEvent> parseResponse(JsonObject response) {
         if (response == null) return new HashMap<>();
         return response
             .stream()
             .map(e -> new AbstractMap.SimpleImmutableEntry<>(
                 e.getKey(),
-                ((JsonObject)e.getValue()).toBuffer()
+                ((JsonObject) e.getValue()).toBuffer()
             ))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
