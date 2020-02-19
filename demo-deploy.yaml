@@ -87,8 +87,8 @@ spec:
       volumeMounts:
         - name: uds-data
           mountPath: /data
-    - name: aggregator-runtime
-      image: docker.io/slinkydeveloper/runtime
+    - name: aggregator-engine-kafka
+      image: docker.io/slinkydeveloper/engine-kafka
       imagePullPolicy: Never
       volumeMounts:
         - name: uds-data

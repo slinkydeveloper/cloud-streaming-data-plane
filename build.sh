@@ -18,4 +18,4 @@ compile_rust_function demo-join-function
 eval $(minikube docker-env)
 build_image demo-join-function
 build_image inbound
-build_image runtime
+build_image engine-kafka

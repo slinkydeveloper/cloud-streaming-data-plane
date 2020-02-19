@@ -161,7 +161,7 @@ public class AggregationOrchestrator {
             out
                 .entrySet()
                 .stream()
-                .map(e -> this.eventSender.accept(aggregation.getAggregationKey(), e.getKey(), e.getValue()))
+                .map(e -> this.eventSender.accept(e.getKey(), aggregation.getAggregationKey(), e.getValue()))
                 .collect(Collectors.toList())
         ).setHandler(ar -> {
             if (ar.failed()) {
