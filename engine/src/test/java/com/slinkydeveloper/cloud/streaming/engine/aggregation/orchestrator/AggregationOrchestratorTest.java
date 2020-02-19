@@ -100,6 +100,37 @@ public class AggregationOrchestratorTest {
     }
 
     @Test
+    public void singleInputNoOutput(Vertx vertx, VertxTestContext testContext) {
+        Checkpoint functionInvoked = testContext.checkpoint();
+
+        String key = "aaa";
+
+        FunctionInvoker mockFunctionInvoker = in -> {
+            testContext.verify(() -> {
+                assertThat(in).containsOnlyKeys("stream1");
+                assertThat(in.get("stream1")).isEqualTo(event1);
+            });
+            functionInvoked.flag();
+            return Future.succeededFuture(Collections.emptyMap());
+        };
+
+        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+            vertx,
+            mockFunctionInvoker,
+            Set.of("stream1"),
+            Set.of(),
+            null,
+            null,
+            (stream, k, event) -> {
+                testContext.failNow(new AssertionError("This should never be invoked"));
+                return Future.succeededFuture();
+            }
+        );
+
+        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
+    }
+
+    @Test
     public void multiInputSingleOutput(Vertx vertx, VertxTestContext testContext) {
         Checkpoint functionInvoked = testContext.checkpoint();
         Checkpoint outputProduced = testContext.checkpoint();
@@ -171,7 +202,7 @@ public class AggregationOrchestratorTest {
                 map.put("state", state2);
                 return Future.succeededFuture(map);
             } else {
-                testContext.failNow(new RuntimeException("FunctionInvoker invoked more than 2 times"));
+                testContext.failNow(new AssertionError("FunctionInvoker invoked more than 2 times"));
                 return Future.failedFuture("");
             }
         };
