@@ -3,7 +3,6 @@ package com.slinkydeveloper.cloud.streaming.engine.kafka;
 import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
 import com.slinkydeveloper.cloud.streaming.engine.aggregation.orchestrator.AggregationOrchestrator;
 import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.StreamProcessor;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.Message;
@@ -39,7 +38,9 @@ public class KafkaEngineVerticle extends AbstractVerticle {
         Map<String, String> config = new HashMap<>();
         config.put("bootstrap.servers", bootstrapServers);
         config.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        config.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
         config.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+        config.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
         config.put("group.id", appId);
         config.put("auto.offset.reset", "earliest");
         config.put("enable.auto.commit", "true"); // Fuck yeah it's a prototype
@@ -52,8 +53,8 @@ public class KafkaEngineVerticle extends AbstractVerticle {
         AggregationOrchestrator orchestrator = new AggregationOrchestrator(
             vertx,
             FunctionInvoker.create(vertx),
-            inputTopics,
-            model.getOutputStreams().stream().map(OutputStream::getName).collect(Collectors.toSet()),
+            model.getInputStreams(),
+            model.getOutputStreams(),
             model.getStateStream(),
             model.getTimeout(),
             (stream, key, cloudEvent) -> producer.send(KafkaProducerRecord.create(stream, key, Json.binaryEncode(cloudEvent))).mapEmpty()

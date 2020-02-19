@@ -38,7 +38,7 @@ public class FunctionInvokerImpl implements FunctionInvoker {
             .sendBuffer(createRequestBody(in))
             .compose(response -> {
                 if (response.statusCode() >= 400) {
-                    return Future.failedFuture("Error happened in user function invocation. Status code: " + response.statusCode());
+                    return Future.failedFuture("Error happened in user function invocation. Status code: " + response.statusCode() + ", Body: " + response.bodyAsString());
                 } else {
                     return Future.succeededFuture(response.bodyAsJsonObject());
                 }

@@ -254,7 +254,7 @@ public class AggregationOrchestrator {
     }
 
     private void handleFailure(Throwable throwable) {
-        logger.warn("Failure {}", throwable);
+        logger.warn("Failure", throwable);
     }
 
     private void logActualState() {
