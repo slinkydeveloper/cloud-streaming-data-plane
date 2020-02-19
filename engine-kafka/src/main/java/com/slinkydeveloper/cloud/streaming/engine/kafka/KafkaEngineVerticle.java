@@ -51,7 +51,7 @@ public class KafkaEngineVerticle extends AbstractVerticle {
 
         AggregationOrchestrator orchestrator = new AggregationOrchestrator(
             vertx,
-            new FunctionInvoker(vertx),
+            FunctionInvoker.create(vertx),
             inputTopics,
             model.getOutputStreams().stream().map(OutputStream::getName).collect(Collectors.toSet()),
             model.getStateStream(),

@@ -32,20 +32,21 @@ public class AggregationOrchestrator {
 
     private Duration timeout;
 
-    private FunctionInvoker functionInvoker;
+    private FunctionInvoker functionInvokerImpl;
 
     private TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender;
 
-    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvoker, Set<String> requiredInputStreams, Set<String> outputStreams, String stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
+    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvokerImpl, Set<String> requiredInputStreams, Set<String> outputStreams, String stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
         this.vertx = vertx;
         this.outputStreams = outputStreams;
         this.requiredInputStreams = requiredInputStreams;
         this.stateStream = stateStream;
         this.timeout = timeout;
-        this.functionInvoker = functionInvoker;
+        this.functionInvokerImpl = functionInvokerImpl;
         this.waitingMessages = new HashMap<>();
         this.runningAggregations = new ArrayList<>();
         this.eventSender = eventSender;
+        this.lastState = new HashMap<>();
     }
 
     public void onEvent(AggregatorEvent event) {
@@ -98,19 +99,19 @@ public class AggregationOrchestrator {
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet())
                 .equals(requiredInputStreams)
-        ).forEach(e -> {
+        ).map(Map.Entry::getKey).collect(Collectors.toList()).forEach(key -> {
             // Dequeue messages
             Map<String, CloudEvent> aggregationInputMap = requiredInputStreams
                 .stream()
-                .map(stream -> new AbstractMap.SimpleImmutableEntry<>(stream, dequeueEvent(e.getKey(), stream)))
+                .map(stream -> new AbstractMap.SimpleImmutableEntry<>(stream, dequeueEvent(key, stream)))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
             CloudEvent state = null;
             if (stateStream != null) {
-                state = this.lastState.get(e.getKey());
+                state = this.lastState.get(key);
             }
 
-            Aggregation aggregation = new Aggregation(e.getKey(), aggregationInputMap, state);
+            Aggregation aggregation = new Aggregation(key, aggregationInputMap, state);
 
             // Trigger aggregation start
             onEvent(AggregatorEvent.createFunctionInvocationStartEvent(aggregation));
@@ -143,7 +144,7 @@ public class AggregationOrchestrator {
         if (aggregation.getState() != null) {
             in.put(stateStream, aggregation.getState());
         }
-        functionInvoker.call(in).setHandler(ar -> {
+        functionInvokerImpl.call(in).setHandler(ar -> {
             if (ar.failed()) {
                 onEvent(AggregatorEvent.createFunctionInvocationFailedEvent(aggregation, ar.cause()));
             } else {
