@@ -12,6 +12,7 @@
         <module>inbound</module>
         <module>engine</module>
         <module>engine-kafka</module>
+        <module>inbound-kafka</module>
     </modules>
 
     <properties>
@@ -68,7 +69,7 @@
                     <configuration>
                         <container>
                             <jvmFlags>
-                                <jvmFlag>-Dorg.slf4j.simpleLogger.defaultLogLevel=info</jvmFlag>
+                                <jvmFlag>-Dorg.slf4j.simpleLogger.defaultLogLevel=warn</jvmFlag>
                                 <jvmFlag>-Dorg.slf4j.simpleLogger.log.com.slinkydeveloper.cloud.streaming=debug
                                 </jvmFlag>
                             </jvmFlags>

@@ -1,4 +1,4 @@
-package com.slinkydeveloper.cloud.streaming.inbound
+package com.slinkydeveloper.cloud.streaming.inbound.kafka
 
 import com.slinkydeveloper.cloud.streaming.inbound.model.InboundStreamSpec
 import io.vertx.core.Vertx

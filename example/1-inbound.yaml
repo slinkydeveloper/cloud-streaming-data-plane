@@ -23,7 +23,7 @@ metadata:
 spec:
   containers:
     - name: inbound
-      image: docker.io/slinkydeveloper/inbound
+      image: docker.io/slinkydeveloper/inbound-kafka
       imagePullPolicy: Never
       ports:
         - containerPort: 8080
@@ -60,7 +60,7 @@ metadata:
 spec:
   containers:
     - name: inbound
-      image: docker.io/slinkydeveloper/inbound
+      image: docker.io/slinkydeveloper/inbound-kafka
       imagePullPolicy: Never
       ports:
         - containerPort: 8080

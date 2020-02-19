@@ -2,12 +2,6 @@
 
 set -e
 
-function compile_java() {
-  cd "./$1"
-  mvn package
-  cd ..
-}
-
 function compile_rust() {
   cd "./$1"
   RUSTC_WRAPPER=sccache cargo build --target x86_64-unknown-linux-musl --release
@@ -22,9 +16,6 @@ function build_image() {
 
 eval $(minikube docker-env)
 mvn package jib:dockerBuild
-
-#build_image inbound
-#build_image engine-kafka
 
 cd example
 compile_rust demo-join-function

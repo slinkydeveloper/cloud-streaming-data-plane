@@ -1,4 +1,4 @@
-package com.slinkydeveloper.cloud.streaming.inbound
+package com.slinkydeveloper.cloud.streaming.inbound.kafka
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.slinkydeveloper.cloud.streaming.inbound.model.InboundStreamSpec
@@ -16,8 +16,6 @@ import io.vertx.kafka.client.producer.KafkaProducer
 import io.vertx.kafka.client.producer.KafkaProducerRecord
 import io.vertx.kotlin.core.http.listenAwait
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
-import kotlinx.coroutines.launch
 import java.util.*
 
 class HttpInboundVerticle(val inboundSpec: InboundStreamSpec, val bootstrapServer: String): CoroutineVerticle() {
