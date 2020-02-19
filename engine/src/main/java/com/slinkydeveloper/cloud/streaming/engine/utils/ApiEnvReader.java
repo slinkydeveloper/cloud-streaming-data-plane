@@ -20,9 +20,13 @@ public class ApiEnvReader {
                 .map(name -> {
                     if (name.contains(":")) {
                         String[] splitted = name.split(Pattern.quote(":"));
-                        return new InputStream(splitted[0], splitted[1]);
+                        if (splitted.length == 2) {
+                            return new InputStream(splitted[0], splitted[1], null);
+                        } else {
+                            return new InputStream(splitted[0], splitted[1], splitted[2]);
+                        }
                     }
-                    return new InputStream(name, null);
+                    return new InputStream(name, null, null);
                 })
                 .collect(Collectors.toSet()),
             Arrays
@@ -30,9 +34,13 @@ public class ApiEnvReader {
                 .map(name -> {
                     if (name.contains(":")) {
                         String[] splitted = name.split(Pattern.quote(":"));
-                        return new OutputStream(splitted[0], splitted[1]);
+                        if (splitted.length == 2) {
+                            return new OutputStream(splitted[0], splitted[1], null);
+                        } else {
+                            return new OutputStream(splitted[0], splitted[1], splitted[2]);
+                        }
                     }
-                    return new OutputStream(name, null);
+                    return new OutputStream(name, null, null);
                 })
                 .collect(Collectors.toSet()),
             getEnv("TIMEOUT", Duration::parse).orElse(null),

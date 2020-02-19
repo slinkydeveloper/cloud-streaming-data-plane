@@ -1,6 +1,8 @@
 package com.slinkydeveloper.cloud.streaming.engine.aggregation.orchestrator;
 
 import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
+import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
+import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.MockMessage;
 import io.cloudevents.CloudEvent;
@@ -63,7 +65,7 @@ public class AggregationOrchestratorTest {
         .build();
 
     @Test
-    public void singleInputSingleOutput(Vertx vertx, VertxTestContext testContext) {
+    public void singleInputSingleOutputWithMapping(Vertx vertx, VertxTestContext testContext) {
         Checkpoint functionInvoked = testContext.checkpoint();
         Checkpoint outputProduced = testContext.checkpoint();
 
@@ -71,23 +73,23 @@ public class AggregationOrchestratorTest {
 
         FunctionInvoker mockFunctionInvoker = in -> {
             testContext.verify(() -> {
-                assertThat(in).containsOnlyKeys("stream1");
-                assertThat(in.get("stream1")).isEqualTo(event1);
+                assertThat(in).containsOnlyKeys("input");
+                assertThat(in.get("input")).isEqualTo(event1);
             });
             functionInvoked.flag();
-            return Future.succeededFuture(Collections.singletonMap("output", in.get("stream1")));
+            return Future.succeededFuture(Collections.singletonMap("output", in.get("input")));
         };
 
         AggregationOrchestrator orchestrator = new AggregationOrchestrator(
             vertx,
             mockFunctionInvoker,
-            Set.of("stream1"),
-            Set.of("output"),
+            Set.of(new InputStream("stream1", "input", null)),
+            Set.of(new OutputStream("streamOutput", "output", null)),
             null,
             null,
             (stream, k, event) -> {
                 testContext.verify(() -> {
-                    assertThat(stream).isEqualTo("output");
+                    assertThat(stream).isEqualTo("streamOutput");
                     assertThat(event).isEqualTo(event1);
                     assertThat(k).isEqualTo(key);
                 });
@@ -117,7 +119,7 @@ public class AggregationOrchestratorTest {
         AggregationOrchestrator orchestrator = new AggregationOrchestrator(
             vertx,
             mockFunctionInvoker,
-            Set.of("stream1"),
+            Set.of(new InputStream("stream1")),
             Set.of(),
             null,
             null,
@@ -150,8 +152,8 @@ public class AggregationOrchestratorTest {
         AggregationOrchestrator orchestrator = new AggregationOrchestrator(
             vertx,
             mockFunctionInvoker,
-            Set.of("stream1", "stream2"),
-            Set.of("output"),
+            Set.of(new InputStream("stream1"), new InputStream("stream2")),
+            Set.of(new OutputStream("output")),
             null,
             null,
             (stream, k, event) -> {
@@ -210,8 +212,8 @@ public class AggregationOrchestratorTest {
         AggregationOrchestrator orchestrator = new AggregationOrchestrator(
             vertx,
             mockFunctionInvoker,
-            Set.of("stream1"),
-            Set.of("output"),
+            Set.of(new InputStream("stream1")),
+            Set.of(new OutputStream("output")),
             "state",
             null,
             (stream, k, event) -> {

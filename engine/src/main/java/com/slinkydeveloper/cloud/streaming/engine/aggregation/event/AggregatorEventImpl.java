@@ -70,4 +70,11 @@ public class AggregatorEventImpl implements AggregatorEvent {
             handler.accept((Aggregation) t0, (Throwable) t1);
         }
     }
+
+    @Override
+    public String toString() {
+        return "AggregatorEventImpl{" +
+            "eventType=" + eventType +
+            '}';
+    }
 }

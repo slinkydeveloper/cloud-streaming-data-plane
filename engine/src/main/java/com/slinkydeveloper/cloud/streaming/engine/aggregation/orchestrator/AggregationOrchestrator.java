@@ -2,6 +2,8 @@ package com.slinkydeveloper.cloud.streaming.engine.aggregation.orchestrator;
 
 import com.slinkydeveloper.cloud.streaming.engine.aggregation.Aggregation;
 import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
+import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
+import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.Message;
 import com.slinkydeveloper.cloud.streaming.engine.utils.TriFunction;
@@ -14,7 +16,9 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 //TODO this is per partition -> Aggregation Orchestrator : Partition
 public class AggregationOrchestrator {
@@ -26,8 +30,8 @@ public class AggregationOrchestrator {
     private Map<String, CloudEvent> lastState;
     private List<Aggregation> runningAggregations;
 
-    private Set<String> requiredInputStreams;
-    private Set<String> outputStreams;
+    private Map<String, InputStream> inputStreams;
+    private Map<String, String> outputParameterToOutputStreamMapping;
     private String stateStream;
 
     private Duration timeout;
@@ -36,10 +40,14 @@ public class AggregationOrchestrator {
 
     private TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender;
 
-    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvokerImpl, Set<String> requiredInputStreams, Set<String> outputStreams, String stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
+    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvokerImpl, Set<InputStream> inputStreams, Set<OutputStream> outputStreams, String stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
         this.vertx = vertx;
-        this.outputStreams = outputStreams;
-        this.requiredInputStreams = requiredInputStreams;
+        this.outputParameterToOutputStreamMapping = outputStreams
+            .stream()
+            .collect(Collectors.toMap(OutputStream::getFunctionReturnName, OutputStream::getName));
+        this.inputStreams = inputStreams
+            .stream()
+            .collect(Collectors.toMap(InputStream::getName, Function.identity()));
         this.stateStream = stateStream;
         this.timeout = timeout;
         this.functionInvokerImpl = functionInvokerImpl;
@@ -50,41 +58,38 @@ public class AggregationOrchestrator {
     }
 
     public void onEvent(AggregatorEvent event) {
+        logger.debug("New event {}", event);
+        logActualState();
+
         event.onNewMessage(message -> {
             enqueueMessage(message);
             triggerExecution();
-            logActualState();
         });
 
         event.onExpiredMessage((buffer, stream, cloudEvent) -> {
             //TODO implement expired strategy
             removeMessage(buffer, stream, cloudEvent);
-            logActualState();
         });
 
         event.onFunctionInvocationStart(aggregation -> {
             this.runningAggregations.add(aggregation);
             startAggregation(aggregation);
-            logActualState();
         });
 
         event.onFunctionInvocationEnded((aggregation, output) -> {
             forwardAggregationResponse(aggregation, output);
             this.runningAggregations.remove(aggregation);
-            logActualState();
         });
 
         event.onFunctionInvocationFailed((aggregation, throwable) -> {
             //TODO implement function invocation failure strategy
             handleFailure(throwable);
             this.runningAggregations.remove(aggregation);
-            logActualState();
         });
 
         event.onSendFailed((aggregation, throwable) -> {
             //TODO implement send failure strategy
             handleFailure(throwable);
-            logActualState();
         });
 
     }
@@ -98,12 +103,13 @@ public class AggregationOrchestrator {
                 .filter(e1 -> e1.getValue().size() >= 1)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet())
-                .equals(requiredInputStreams)
+                .equals(inputStreams.keySet())
         ).map(Map.Entry::getKey).collect(Collectors.toList()).forEach(key -> {
             // Dequeue messages
-            Map<String, CloudEvent> aggregationInputMap = requiredInputStreams
+            Map<String, CloudEvent> aggregationInputMap = inputStreams
+                .entrySet()
                 .stream()
-                .map(stream -> new AbstractMap.SimpleImmutableEntry<>(stream, dequeueEvent(key, stream)))
+                .map(e -> new AbstractMap.SimpleImmutableEntry<>(e.getValue().getFunctionParameterName(), dequeueEvent(key, e.getKey())))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
             CloudEvent state = null;
@@ -154,15 +160,25 @@ public class AggregationOrchestrator {
     }
 
     private void forwardAggregationResponse(Aggregation aggregation, Map<String, CloudEvent> out) {
+        Stream<Map.Entry<String, CloudEvent>> outputEvents = out
+            .entrySet()
+            .stream()
+            .filter(e -> this.outputParameterToOutputStreamMapping.containsKey(e.getKey()))
+            .map(e -> new AbstractMap.SimpleImmutableEntry<>(this.outputParameterToOutputStreamMapping.get(e.getKey()), e.getValue()));
+
         if (out.containsKey(stateStream)) {
             updateState(aggregation.getAggregationKey(), out.get(stateStream));
+            outputEvents = Stream.concat(Stream.of(
+                new AbstractMap.SimpleImmutableEntry<>(stateStream, out.get(stateStream))
+            ), outputEvents);
         }
 
         CompositeFuture.all(
-            out
-                .entrySet()
-                .stream()
-                .map(e -> this.eventSender.accept(e.getKey(), aggregation.getAggregationKey(), e.getValue()))
+            outputEvents
+                .map(e ->
+                    this.eventSender
+                        .accept(e.getKey(), aggregation.getAggregationKey(), e.getValue())
+                )
                 .collect(Collectors.toList())
         ).setHandler(ar -> {
             if (ar.failed()) {
@@ -243,7 +259,7 @@ public class AggregationOrchestrator {
 
     private void logActualState() {
         if (logger.isDebugEnabled()) {
-            logger.debug("Running aggregations: {}", runningAggregations.size());
+            logger.debug("Waiting aggregation keys {}", this.waitingMessages.size());
             waitingMessages.keySet().forEach(k -> {
                 logger.debug("Messages in queues for key {}: {}", k, waitingMessagesCountForKey(k));
             });
@@ -257,7 +273,7 @@ public class AggregationOrchestrator {
             return;
         }
         this.lastState.put(key, state);
-        logger.debug("State updated: {}", state.getAttributes().getId());
+        logger.debug("State updated with new event id: {}", state.getAttributes().getId());
     }
 
     private class CloudEventQueueItem {
