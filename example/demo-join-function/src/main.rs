@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use actix_web::error;
 use cloudevent::{Event, EventBuilder, Reader, Writer};
 use faas_rust_macro::faas_function;
 use maplit::hashmap;
+use std::collections::HashMap;
 
 #[faas_function]
 pub async fn sum(inbound_a: Event, inbound_b: Event) -> Result<HashMap<String, Event>, actix_web::Error> {

@@ -1,6 +1,8 @@
 package com.slinkydeveloper.cloud.streaming.engine.function;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.cloudevents.CloudEvent;
+import io.cloudevents.v1.CloudEventImpl;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -44,9 +46,9 @@ public class FunctionInvoker {
 
     private Buffer createRequestBody(Map<String, CloudEvent> in) {
         return in
-            .values()
+            .entrySet()
             .stream()
-            .map(e -> new JsonObject().put(e.topic(), new JsonObject(e.value())))
+            .map(e -> new JsonObject().put(e.getKey(), toJson(e.getValue())))
             .reduce(new JsonObject(), JsonObject::mergeIn)
             .toBuffer();
     }
@@ -57,8 +59,19 @@ public class FunctionInvoker {
             .stream()
             .map(e -> new AbstractMap.SimpleImmutableEntry<>(
                 e.getKey(),
-                ((JsonObject) e.getValue()).toBuffer()
+                toEvent((JsonObject) e.getValue())
             ))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+
+    //TODO highly inefficient, this should be improved in sdk-java
+    private JsonObject toJson(CloudEvent event) {
+        return new JsonObject(io.cloudevents.json.Json.encode(event));
+    }
+
+    private CloudEvent toEvent(JsonObject obj) {
+        return io.cloudevents.json.Json.decodeValue(obj.toString(), new TypeReference<CloudEventImpl>() {
+        });
     }
 }

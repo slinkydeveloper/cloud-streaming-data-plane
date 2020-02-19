@@ -1,11 +1,8 @@
-package com.slinkydeveloper.cloud.streaming.engine;
+package com.slinkydeveloper.cloud.streaming.engine.utils;
 
 import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.StreamProcessor;
-import com.slinkydeveloper.cloud.streaming.engine.kafka.KafkaReceiverVerticle;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -14,36 +11,34 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class DemoStart {
+public class ApiEnvReader {
 
-    public static void main(String[] args) {
-        String bootstrapServers = getEnv("KAFKA_BROKERS").get();
-        String appId = getEnv("APP_ID").get();
-        StreamProcessor model = new StreamProcessor(
+    public static StreamProcessor readStreamProcessorFromEnv() {
+        return new StreamProcessor(
             Arrays
                 .stream(getEnv("INPUT_STREAMS", s -> s.split(Pattern.quote(","))).get())
-                .map(name -> new InputStream(name, metadataAsKey))
+                .map(name -> {
+                    if (name.contains(":")) {
+                        String[] splitted = name.split(Pattern.quote(":"));
+                        return new InputStream(splitted[0], splitted[1]);
+                    }
+                    return new InputStream(name, null);
+                })
                 .collect(Collectors.toSet()),
             Arrays
                 .stream(getEnv("OUTPUT_STREAMS", s -> s.split(Pattern.quote(","))).get())
-                .map(OutputStream::new)
+                .map(name -> {
+                    if (name.contains(":")) {
+                        String[] splitted = name.split(Pattern.quote(":"));
+                        return new OutputStream(splitted[0], splitted[1]);
+                    }
+                    return new OutputStream(name, null);
+                })
                 .collect(Collectors.toSet()),
             getEnv("TIMEOUT", Duration::parse).orElse(null),
             null,
-            stateStream);
-
-        Vertx vertx = Vertx.vertx(new VertxOptions().setPreferNativeTransport(true));
-        vertx.deployVerticle(new KafkaReceiverVerticle(
-            bootstrapServers,
-            appId,
-            model
-        )).setHandler(ar -> {
-            if (ar.failed()) {
-                System.out.println("Failed deploy: " + ar.cause());
-            } else {
-                System.out.println("Succeeded deploy of AggregatorVerticle");
-            }
-        });
+            getEnv("STATE_STREAM").orElse(null)
+        );
     }
 
     public static Optional<String> getEnv(String key) {

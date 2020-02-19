@@ -4,7 +4,6 @@ import com.slinkydeveloper.cloud.streaming.engine.aggregation.Aggregation;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.Message;
 import com.slinkydeveloper.cloud.streaming.engine.utils.TriConsumer;
 import io.cloudevents.CloudEvent;
-import io.vertx.core.buffer.Buffer;
 
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -16,7 +15,7 @@ public interface AggregatorEvent {
 
     void onNewMessage(Consumer<Message> handler);
 
-    void onExpiredMessage(TriConsumer<Buffer, String, CloudEvent> handler);
+    void onExpiredMessage(TriConsumer<String, String, CloudEvent> handler);
 
     void onFunctionInvocationStart(Consumer<Aggregation> handler);
 
@@ -30,7 +29,7 @@ public interface AggregatorEvent {
         return new AggregatorEventImpl(AggregatorEventType.NEW_MESSAGE, message, null, null);
     }
 
-    static AggregatorEvent createExpiredMessageEvent(Buffer key, String stream, CloudEvent event) {
+    static AggregatorEvent createExpiredMessageEvent(String key, String stream, CloudEvent event) {
         return new AggregatorEventImpl(AggregatorEventType.EXPIRED_MESSAGE, key, stream, event);
     }
 

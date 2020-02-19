@@ -4,15 +4,20 @@ import java.util.Objects;
 
 public class InputStream {
 
-    // Topic name
-    String name;
+    private String name;
+    private String metadataAsKey;
 
-    public InputStream(String name) {
+    public InputStream(String name, String metadataAsKey) {
         this.name = name;
+        this.metadataAsKey = metadataAsKey;
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getMetadataAsKey() {
+        return metadataAsKey;
     }
 
     @Override
@@ -20,11 +25,12 @@ public class InputStream {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         InputStream that = (InputStream) o;
-        return Objects.equals(name, that.name);
+        return Objects.equals(name, that.name) &&
+            Objects.equals(metadataAsKey, that.metadataAsKey);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name);
+        return Objects.hash(name, metadataAsKey);
     }
 }

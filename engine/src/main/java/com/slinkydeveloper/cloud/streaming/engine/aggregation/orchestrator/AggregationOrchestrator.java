@@ -9,7 +9,6 @@ import io.cloudevents.CloudEvent;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,7 +22,8 @@ public class AggregationOrchestrator {
     private static final Logger logger = LoggerFactory.getLogger(AggregationOrchestrator.class);
 
     private Vertx vertx;
-    private Map<Buffer, HashMap<String, ArrayDeque<CloudEventQueueItem>>> waitingMessages;
+    private Map<String, HashMap<String, ArrayDeque<CloudEventQueueItem>>> waitingMessages;
+    private Map<String, CloudEvent> lastState;
     private List<Aggregation> runningAggregations;
 
     private Set<String> requiredInputStreams;
@@ -34,9 +34,9 @@ public class AggregationOrchestrator {
 
     private FunctionInvoker functionInvoker;
 
-    private TriFunction<Buffer, String, CloudEvent<?, ?>, Future<Void>> eventSender;
+    private TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender;
 
-    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvoker, Set<String> requiredInputStreams, Set<String> outputStreams, String stateStream, Duration timeout, TriFunction<Buffer, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
+    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvoker, Set<String> requiredInputStreams, Set<String> outputStreams, String stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
         this.vertx = vertx;
         this.outputStreams = outputStreams;
         this.requiredInputStreams = requiredInputStreams;
@@ -68,7 +68,6 @@ public class AggregationOrchestrator {
         });
 
         event.onFunctionInvocationEnded((aggregation, output) -> {
-            //TODO
             forwardAggregationResponse(aggregation, output);
             this.runningAggregations.remove(aggregation);
             logActualState();
@@ -89,34 +88,6 @@ public class AggregationOrchestrator {
 
     }
 
-    public void startAggregation(Aggregation aggregation) {
-        HashMap<String, CloudEvent> in = new HashMap<>(aggregation.getInput());
-        if (aggregation.getState() != null) {
-            in.put("state", aggregation.getState());
-        }
-        functionInvoker.call(in).setHandler(ar -> {
-            if (ar.failed()) {
-                onEvent(AggregatorEvent.createFunctionInvocationFailedEvent(aggregation, ar.cause()));
-            } else {
-                onEvent(AggregatorEvent.createFunctionInvocationEndedEvent(aggregation, ar.result()));
-            }
-        });
-    }
-
-    public void forwardAggregationResponse(Aggregation aggregation, Map<String, CloudEvent> out) {
-        CompositeFuture.all(
-            out
-                .entrySet()
-                .stream()
-                .map(e -> this.eventSender.accept(aggregation.getAggregationKey(), e.getKey(), e.getValue()))
-                .collect(Collectors.toList())
-        ).setHandler(ar -> {
-            if (ar.failed()) {
-                handleFailure(ar.cause());
-            }
-        });
-    }
-
     private void triggerExecution() {
         this.waitingMessages.entrySet().stream().filter(e ->
             // Start new aggregation if there is at least one item in each stream event queue
@@ -134,10 +105,9 @@ public class AggregationOrchestrator {
                 .map(stream -> new AbstractMap.SimpleImmutableEntry<>(stream, dequeueEvent(e.getKey(), stream)))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-
             CloudEvent state = null;
             if (stateStream != null) {
-                state = dequeueEvent(e.getKey(), stateStream);
+                state = this.lastState.get(e.getKey());
             }
 
             Aggregation aggregation = new Aggregation(e.getKey(), aggregationInputMap, state);
@@ -148,20 +118,59 @@ public class AggregationOrchestrator {
     }
 
     private void enqueueMessage(Message message) {
+        if (message.stream().equals(stateStream)) {
+            //TODO what should we do here? we need a comparison between the actual state and the new received one
+            return;
+        }
         //TODO handle bad event
         CloudEvent event = message.toEvent();
         HashMap<String, ArrayDeque<CloudEventQueueItem>> streamQueueMap = this.waitingMessages.computeIfAbsent(message.key(), buf -> new HashMap<>());
         ArrayDeque<CloudEventQueueItem> waitingMessageForStream = streamQueueMap.computeIfAbsent(message.stream(), str -> new ArrayDeque<>());
-        long timerId = vertx.setTimer(this.timeout.toMillis(), h -> {
-            if (h != null) {
-                onEvent(AggregatorEvent.createExpiredMessageEvent(message.key(), message.stream(), event));
-            }
-        });
-
-        waitingMessageForStream.push(new CloudEventQueueItem(event, timerId));
+        if (this.timeout != null) {
+            long timerId = vertx.setTimer(this.timeout.toMillis(), h -> {
+                if (h != null) {
+                    onEvent(AggregatorEvent.createExpiredMessageEvent(message.key(), message.stream(), event));
+                }
+            });
+            waitingMessageForStream.push(new CloudEventQueueItem(event, timerId));
+        } else {
+            waitingMessageForStream.push(new CloudEventQueueItem(event, null));
+        }
     }
 
-    private CloudEvent dequeueEvent(Buffer key, String stream) {
+    private void startAggregation(Aggregation aggregation) {
+        HashMap<String, CloudEvent> in = new HashMap<>(aggregation.getInput());
+        if (aggregation.getState() != null) {
+            in.put(stateStream, aggregation.getState());
+        }
+        functionInvoker.call(in).setHandler(ar -> {
+            if (ar.failed()) {
+                onEvent(AggregatorEvent.createFunctionInvocationFailedEvent(aggregation, ar.cause()));
+            } else {
+                onEvent(AggregatorEvent.createFunctionInvocationEndedEvent(aggregation, ar.result()));
+            }
+        });
+    }
+
+    private void forwardAggregationResponse(Aggregation aggregation, Map<String, CloudEvent> out) {
+        if (out.containsKey(stateStream)) {
+            updateState(aggregation.getAggregationKey(), out.get(stateStream));
+        }
+
+        CompositeFuture.all(
+            out
+                .entrySet()
+                .stream()
+                .map(e -> this.eventSender.accept(aggregation.getAggregationKey(), e.getKey(), e.getValue()))
+                .collect(Collectors.toList())
+        ).setHandler(ar -> {
+            if (ar.failed()) {
+                handleFailure(ar.cause());
+            }
+        });
+    }
+
+    private CloudEvent dequeueEvent(String key, String stream) {
         HashMap<String, ArrayDeque<CloudEventQueueItem>> streamQueueMap = this.waitingMessages.get(key);
         if (streamQueueMap == null) {
             return null;
@@ -187,7 +196,7 @@ public class AggregationOrchestrator {
         return item.event;
     }
 
-    private void removeMessage(Buffer key, String stream, CloudEvent event) {
+    private void removeMessage(String key, String stream, CloudEvent event) {
         HashMap<String, ArrayDeque<CloudEventQueueItem>> streamQueueMap = this.waitingMessages.get(key);
         if (streamQueueMap == null) {
             return;
@@ -216,7 +225,7 @@ public class AggregationOrchestrator {
         }
     }
 
-    private Map<String, Integer> waitingMessagesCountForKey(Buffer key) {
+    private Map<String, Integer> waitingMessagesCountForKey(String key) {
         return Optional.ofNullable(
             waitingMessages.get(key)
         ).map(h -> h
@@ -238,6 +247,16 @@ public class AggregationOrchestrator {
                 logger.debug("Messages in queues for key {}: {}", k, waitingMessagesCountForKey(k));
             });
         }
+    }
+
+    private void updateState(String key, CloudEvent state) {
+        if (state == null) {
+            this.lastState.remove(key);
+            logger.debug("State removed");
+            return;
+        }
+        this.lastState.put(key, state);
+        logger.debug("State updated: {}", state.getAttributes().getId());
     }
 
     private class CloudEventQueueItem {

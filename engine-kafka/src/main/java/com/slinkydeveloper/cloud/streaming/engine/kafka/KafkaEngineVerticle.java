@@ -5,6 +5,7 @@ import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.StreamProcessor;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
+import com.slinkydeveloper.cloud.streaming.engine.utils.ApiEnvReader;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
@@ -16,13 +17,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class KafkaReceiverVerticle extends AbstractVerticle {
+public class KafkaEngineVerticle extends AbstractVerticle {
 
     private String bootstrapServers;
     private String appId;
     private StreamProcessor model;
 
-    public KafkaReceiverVerticle(String bootstrapServers, String appId, StreamProcessor model) {
+    public KafkaEngineVerticle(String bootstrapServers, String appId, StreamProcessor model) {
         this.bootstrapServers = bootstrapServers;
         this.appId = appId;
         this.model = model;
@@ -58,4 +59,11 @@ public class KafkaReceiverVerticle extends AbstractVerticle {
             .subscribe(inputTopics)
             .setHandler(startPromise);
     }
+
+    public static void main(String[] args) {
+        String bootstrapServers = ApiEnvReader.getEnv("KAFKA_BROKERS").get();
+        String appId = ApiEnvReader.getEnv("APP_ID").get();
+        StreamProcessor streamProcessorModel = ApiEnvReader.readStreamProcessorFromEnv();
+    }
+
 }
