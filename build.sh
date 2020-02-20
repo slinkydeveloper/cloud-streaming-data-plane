@@ -17,8 +17,17 @@ function build_image() {
 eval $(minikube docker-env)
 mvn package jib:dockerBuild
 
-cd example
+cd example-sum-flow
 compile_rust demo-join-function
 build_image demo-join-function
 compile_rust demo-logger
 build_image demo-logger
+
+cd ..
+cd example-stock-flow
+compile_rust demo-stocks-filter
+build_image demo-stocks-filter
+compile_rust demo-stocks-decisions
+build_image demo-stocks-decisions
+compile_rust demo-stocks-decisions-logger
+build_image demo-stocks-decisions-logger
