@@ -13,6 +13,9 @@ public class StreamProcessor {
     // Possible output streams
     private Set<OutputStream> outputStreams;
 
+    // TODO The state stream is a special stream that bla bla bla
+    private StateStream stateStream;
+
     // Timeout for an aggregation instance, aka timeout for a key to join with other elements
     // The timer for this timeout starts when a new aggregation begin and ends when all messages
     // required for the aggregation are received
@@ -24,10 +27,7 @@ public class StreamProcessor {
     // What to do when a failure happens in join function?
     private FailureStrategy failureStrategy;
 
-    // TODO The state stream is a special stream that bla bla bla
-    private String stateStream;
-
-    public StreamProcessor(Set<InputStream> inputStreams, Set<OutputStream> outputStreams, Duration timeout, TimeoutStrategy timeoutStrategy, String stateStream) {
+    public StreamProcessor(Set<InputStream> inputStreams, Set<OutputStream> outputStreams, Duration timeout, TimeoutStrategy timeoutStrategy, StateStream stateStream) {
         this.inputStreams = inputStreams;
         this.outputStreams = outputStreams;
         this.timeout = timeout;
@@ -83,11 +83,11 @@ public class StreamProcessor {
         return this;
     }
 
-    public String getStateStream() {
+    public StateStream getStateStream() {
         return stateStream;
     }
 
-    public StreamProcessor setStateStream(String stateStream) {
+    public StreamProcessor setStateStream(StateStream stateStream) {
         this.stateStream = stateStream;
         return this;
     }

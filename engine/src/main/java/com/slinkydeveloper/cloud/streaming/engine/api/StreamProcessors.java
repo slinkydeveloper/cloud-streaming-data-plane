@@ -16,7 +16,7 @@ public class StreamProcessors {
     public static StreamProcessor createFold(String input, String output) {
         return new StreamProcessor()
             .setInputStreams(Set.of(new InputStream(input, null, null)))
-            .setStateStream(output);
+            .setStateStream(new StateStream(output));
     }
 
     public static StreamProcessor createStatefulMapper(String input, String output) {
@@ -24,7 +24,7 @@ public class StreamProcessors {
         return new StreamProcessor()
             .setInputStreams(Set.of(new InputStream(input, null, null)))
             .setOutputStreams(Set.of(new OutputStream(output, null, null)))
-            .setStateStream(stateTopic);
+            .setStateStream(new StateStream(stateTopic));
     }
 
 }

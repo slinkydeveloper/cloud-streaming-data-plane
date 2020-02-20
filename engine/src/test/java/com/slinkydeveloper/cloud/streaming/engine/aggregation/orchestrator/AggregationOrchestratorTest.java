@@ -3,9 +3,12 @@ package com.slinkydeveloper.cloud.streaming.engine.aggregation.orchestrator;
 import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
 import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
+import com.slinkydeveloper.cloud.streaming.engine.api.StateStream;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.MockMessage;
 import io.cloudevents.CloudEvent;
+import io.cloudevents.extensions.ExtensionFormat;
+import io.cloudevents.extensions.InMemoryFormat;
 import io.cloudevents.v1.CloudEventBuilder;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -99,6 +102,51 @@ public class AggregationOrchestratorTest {
         );
 
         orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
+    }
+
+    @Test
+    public void singleInputSingleOutputWithMetadataAsKey(Vertx vertx, VertxTestContext testContext) {
+        Checkpoint functionInvoked = testContext.checkpoint();
+        Checkpoint outputProduced = testContext.checkpoint();
+
+        CloudEvent event = CloudEventBuilder
+            .builder()
+            .withId("bbb")
+            .withType("ping.application")
+            .withSource(URI.create("http://localhost"))
+            .withSubject("pippo")
+            .withExtension(ExtensionFormat.of(InMemoryFormat.of("ext1", "ccc", String.class)))
+            .withTime(ZonedDateTime.now())
+            .build();
+
+        FunctionInvoker mockFunctionInvoker = in -> {
+            testContext.verify(() -> {
+                assertThat(in).containsOnlyKeys("input");
+                assertThat(in.get("input")).isEqualTo(event);
+            });
+            functionInvoked.flag();
+            return Future.succeededFuture(Collections.singletonMap("output", in.get("input")));
+        };
+
+        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+            vertx,
+            mockFunctionInvoker,
+            Set.of(new InputStream("stream1", "input", "id")),
+            Set.of(new OutputStream("streamOutput", "output", "ext1")),
+            null,
+            null,
+            (stream, k, e) -> {
+                testContext.verify(() -> {
+                    assertThat(stream).isEqualTo("streamOutput");
+                    assertThat(k).isEqualTo("ccc");
+                    assertThat(e).isEqualTo(event);
+                });
+                outputProduced.flag();
+                return Future.succeededFuture();
+            }
+        );
+
+        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", "aaa", 0, ZonedDateTime.now(), event)));
     }
 
     @Test
@@ -214,7 +262,7 @@ public class AggregationOrchestratorTest {
             mockFunctionInvoker,
             Set.of(new InputStream("stream1")),
             Set.of(new OutputStream("output")),
-            "state",
+            new StateStream("state"),
             null,
             (stream, k, event) -> {
                 testContext.verify(() -> {

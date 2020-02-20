@@ -4,8 +4,10 @@ import com.slinkydeveloper.cloud.streaming.engine.aggregation.Aggregation;
 import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
 import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
+import com.slinkydeveloper.cloud.streaming.engine.api.StateStream;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.Message;
+import com.slinkydeveloper.cloud.streaming.engine.utils.KeyExtractor;
 import com.slinkydeveloper.cloud.streaming.engine.utils.TriFunction;
 import io.cloudevents.CloudEvent;
 import io.vertx.core.CompositeFuture;
@@ -31,8 +33,8 @@ public class AggregationOrchestrator {
     private List<Aggregation> runningAggregations;
 
     private Map<String, InputStream> inputStreams;
-    private Map<String, String> outputParameterToOutputStreamMapping;
-    private String stateStream;
+    private Map<String, OutputStream> returnValuesNamesToOutputStreams;
+    private StateStream stateStream;
 
     private Duration timeout;
 
@@ -40,11 +42,11 @@ public class AggregationOrchestrator {
 
     private TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender;
 
-    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvokerImpl, Set<InputStream> inputStreams, Set<OutputStream> outputStreams, String stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
+    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvokerImpl, Set<InputStream> inputStreams, Set<OutputStream> outputStreams, StateStream stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
         this.vertx = vertx;
-        this.outputParameterToOutputStreamMapping = outputStreams
+        this.returnValuesNamesToOutputStreams = outputStreams
             .stream()
-            .collect(Collectors.toMap(OutputStream::getFunctionReturnName, OutputStream::getName));
+            .collect(Collectors.toMap(OutputStream::getFunctionReturnName, Function.identity()));
         this.inputStreams = inputStreams
             .stream()
             .collect(Collectors.toMap(InputStream::getName, Function.identity()));
@@ -125,13 +127,23 @@ public class AggregationOrchestrator {
     }
 
     private void enqueueMessage(Message message) {
-        if (message.stream().equals(stateStream)) {
+        if (stateStream != null && message.stream().equals(stateStream)) {
             //TODO what should we do here? we need a comparison between the actual state and the new received one
+            return;
+        }
+
+        InputStream stream = inputStreams.get(message.stream());
+        if (stream == null) {
+            handleFailure(new RuntimeException("Unknown stream " + message.stream()));
             return;
         }
         //TODO handle bad event
         CloudEvent event = message.toEvent();
-        HashMap<String, ArrayDeque<CloudEventQueueItem>> streamQueueMap = this.waitingMessages.computeIfAbsent(message.key(), buf -> new HashMap<>());
+        String key = KeyExtractor.extractKey(event, stream.getMetadataAsKey(), message.key());
+
+        logger.debug("Received event in stream {} with key {} and id {}", stream.getName(), key, event.getAttributes().getId());
+
+        HashMap<String, ArrayDeque<CloudEventQueueItem>> streamQueueMap = this.waitingMessages.computeIfAbsent(key, buf -> new HashMap<>());
         ArrayDeque<CloudEventQueueItem> waitingMessageForStream = streamQueueMap.computeIfAbsent(message.stream(), str -> new ArrayDeque<>());
         if (this.timeout != null) {
             long timerId = vertx.setTimer(this.timeout.toMillis(), h -> {
@@ -148,7 +160,7 @@ public class AggregationOrchestrator {
     private void startAggregation(Aggregation aggregation) {
         HashMap<String, CloudEvent> in = new HashMap<>(aggregation.getInput());
         if (aggregation.getState() != null) {
-            in.put(stateStream, aggregation.getState());
+            in.put(stateStream.getName(), aggregation.getState());
         }
         functionInvokerImpl.call(in).setHandler(ar -> {
             if (ar.failed()) {
@@ -160,24 +172,40 @@ public class AggregationOrchestrator {
     }
 
     private void forwardAggregationResponse(Aggregation aggregation, Map<String, CloudEvent> out) {
-        Stream<Map.Entry<String, CloudEvent>> outputEvents = out
+        var outputEvents = out
             .entrySet()
             .stream()
-            .filter(e -> this.outputParameterToOutputStreamMapping.containsKey(e.getKey()))
-            .map(e -> new AbstractMap.SimpleImmutableEntry<>(this.outputParameterToOutputStreamMapping.get(e.getKey()), e.getValue()));
+            .filter(e -> this.returnValuesNamesToOutputStreams.containsKey(e.getKey()))
+            .map(e -> new AbstractMap.SimpleImmutableEntry<>(this.returnValuesNamesToOutputStreams.get(e.getKey()), e.getValue()))
+            .map(e -> new AbstractMap.SimpleImmutableEntry<>(
+                new AbstractMap.SimpleImmutableEntry<>(
+                    e.getKey().getName(),
+                    KeyExtractor.extractKey(e.getValue(), e.getKey().getMetadataAsKey(), aggregation.getAggregationKey())
+                ), e.getValue()
+            ));
 
-        if (out.containsKey(stateStream)) {
-            updateState(aggregation.getAggregationKey(), out.get(stateStream));
-            outputEvents = Stream.concat(Stream.of(
-                new AbstractMap.SimpleImmutableEntry<>(stateStream, out.get(stateStream))
-            ), outputEvents);
+        if (stateStream != null && out.containsKey(stateStream.getName())) {
+            updateState(aggregation.getAggregationKey(), out.get(stateStream.getName()));
+            outputEvents =
+                Stream.concat(
+                    Stream.of(
+                        new AbstractMap.SimpleImmutableEntry<>(
+                            new AbstractMap.SimpleImmutableEntry<>(
+                                stateStream.getName(),
+                                KeyExtractor.extractKey(out.get(stateStream.getName()), stateStream.getMetadataAsKey(), aggregation.getAggregationKey())
+                            ),
+                            out.get(stateStream.getName())
+                        )
+                    ),
+                    outputEvents
+                );
         }
 
         CompositeFuture.all(
             outputEvents
                 .map(e ->
                     this.eventSender
-                        .accept(e.getKey(), aggregation.getAggregationKey(), e.getValue())
+                        .accept(e.getKey().getKey(), e.getKey().getValue(), e.getValue())
                 )
                 .collect(Collectors.toList())
         ).setHandler(ar -> {

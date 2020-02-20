@@ -2,6 +2,7 @@ package com.slinkydeveloper.cloud.streaming.engine.utils;
 
 import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
+import com.slinkydeveloper.cloud.streaming.engine.api.StateStream;
 import com.slinkydeveloper.cloud.streaming.engine.api.StreamProcessor;
 
 import java.time.Duration;
@@ -49,7 +50,13 @@ public class ApiEnvReader {
                 .orElse(Collections.emptySet()),
             getEnv("TIMEOUT", Duration::parse).orElse(null),
             null,
-            getEnv("STATE_STREAM").orElse(null)
+            getEnv("STATE_STREAM").map(name -> {
+                if (name.contains(":")) {
+                    String[] splitted = name.split(Pattern.quote(":"));
+                    return new StateStream(splitted[0], splitted[1]);
+                }
+                return new StateStream(name);
+            }).orElse(null)
         );
     }
 
