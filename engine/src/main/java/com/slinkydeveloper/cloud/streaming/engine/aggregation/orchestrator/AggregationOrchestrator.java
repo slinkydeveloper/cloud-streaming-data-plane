@@ -160,7 +160,7 @@ public class AggregationOrchestrator {
     private void startAggregation(Aggregation aggregation) {
         HashMap<String, CloudEvent> in = new HashMap<>(aggregation.getInput());
         if (aggregation.getState() != null) {
-            in.put(stateStream.getName(), aggregation.getState());
+            in.put(stateStream.getFunctionReturnName(), aggregation.getState());
         }
         functionInvokerImpl.call(in).setHandler(ar -> {
             if (ar.failed()) {
@@ -184,17 +184,19 @@ public class AggregationOrchestrator {
                 ), e.getValue()
             ));
 
-        if (stateStream != null && out.containsKey(stateStream.getName())) {
-            updateState(aggregation.getAggregationKey(), out.get(stateStream.getName()));
+        if (stateStream != null && out.containsKey(stateStream.getFunctionReturnName())) {
+            CloudEvent state = out.get(stateStream.getFunctionReturnName());
+            String stateKey = KeyExtractor.extractKey(state, stateStream.getMetadataAsKey(), aggregation.getAggregationKey());
+            updateState(stateKey, state);
             outputEvents =
                 Stream.concat(
                     Stream.of(
                         new AbstractMap.SimpleImmutableEntry<>(
                             new AbstractMap.SimpleImmutableEntry<>(
                                 stateStream.getName(),
-                                KeyExtractor.extractKey(out.get(stateStream.getName()), stateStream.getMetadataAsKey(), aggregation.getAggregationKey())
+                                stateKey
                             ),
-                            out.get(stateStream.getName())
+                            state
                         )
                     ),
                     outputEvents

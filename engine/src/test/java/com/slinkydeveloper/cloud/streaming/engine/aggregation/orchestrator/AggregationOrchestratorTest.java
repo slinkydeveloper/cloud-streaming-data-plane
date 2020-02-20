@@ -289,8 +289,6 @@ public class AggregationOrchestratorTest {
 
         orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
         orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream2", key, 0, ZonedDateTime.now(), event2)));
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream2", key, 0, ZonedDateTime.now(), event2)));
     }
 
 }

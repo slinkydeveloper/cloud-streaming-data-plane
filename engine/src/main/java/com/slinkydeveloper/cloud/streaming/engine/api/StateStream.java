@@ -6,14 +6,20 @@ public class StateStream {
 
     private String name;
     private String metadataAsKey;
+    private String functionReturnName;
 
     public StateStream(String name) {
-        this(name, null);
+        this(name, null, null);
     }
 
-    public StateStream(String name, String metadataAsKey) {
+    public StateStream(String name, String metadataAsKey, String functionReturnName) {
         this.name = name;
         this.metadataAsKey = metadataAsKey;
+        if (functionReturnName != null) {
+            this.functionReturnName = functionReturnName;
+        } else {
+            this.functionReturnName = name;
+        }
     }
 
     public String getName() {
@@ -24,17 +30,22 @@ public class StateStream {
         return metadataAsKey;
     }
 
+    public String getFunctionReturnName() {
+        return functionReturnName;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         StateStream that = (StateStream) o;
         return Objects.equals(name, that.name) &&
-            Objects.equals(metadataAsKey, that.metadataAsKey);
+            Objects.equals(metadataAsKey, that.metadataAsKey) &&
+            Objects.equals(functionReturnName, that.functionReturnName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, metadataAsKey);
+        return Objects.hash(name, metadataAsKey, functionReturnName);
     }
 }

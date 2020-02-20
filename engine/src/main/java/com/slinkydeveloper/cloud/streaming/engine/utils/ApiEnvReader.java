@@ -53,9 +53,13 @@ public class ApiEnvReader {
             getEnv("STATE_STREAM").map(name -> {
                 if (name.contains(":")) {
                     String[] splitted = name.split(Pattern.quote(":"));
-                    return new StateStream(splitted[0], splitted[1]);
+                    if (splitted.length == 2) {
+                        return new StateStream(splitted[0], splitted[1], null);
+                    } else {
+                        return new StateStream(splitted[0], splitted[1], splitted[2]);
+                    }
                 }
-                return new StateStream(name);
+                return new StateStream(name, null, null);
             }).orElse(null)
         );
     }
