@@ -94,6 +94,7 @@ public class AggregationOrchestrator {
             handleFailure(throwable);
         });
 
+        logActualState();
     }
 
     private void triggerExecution() {
@@ -172,6 +173,8 @@ public class AggregationOrchestrator {
     }
 
     private void forwardAggregationResponse(Aggregation aggregation, Map<String, CloudEvent> out) {
+        logger.debug("Function invocation for key {} returned events {}", aggregation.getAggregationKey(), out.keySet());
+
         var outputEvents = out
             .entrySet()
             .stream()
@@ -292,6 +295,10 @@ public class AggregationOrchestrator {
             logger.debug("Waiting aggregation keys {}", this.waitingMessages.size());
             waitingMessages.keySet().forEach(k -> {
                 logger.debug("Messages in queues for key {}: {}", k, waitingMessagesCountForKey(k));
+            });
+            logger.debug("Last state: {}", this.lastState.size());
+            this.lastState.forEach((k, v) -> {
+                logger.debug("State {}: {}", k, v.getAttributes().getId());
             });
         }
     }

@@ -12,7 +12,7 @@ public class StateStream {
         this(name, null, null);
     }
 
-    public StateStream(String name, String metadataAsKey, String functionReturnName) {
+    public StateStream(String name, String functionReturnName, String metadataAsKey) {
         this.name = name;
         this.metadataAsKey = metadataAsKey;
         if (functionReturnName != null) {

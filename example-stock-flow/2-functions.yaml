@@ -18,6 +18,8 @@ spec:
           value: /data/function
         - name: FAAS_LOG
           value: "true"
+        - name: STOCKS
+          value: "rht,ibm"
     - name: aggregator-engine-kafka
       image: docker.io/slinkydeveloper/engine-kafka
       imagePullPolicy: Never
@@ -26,7 +28,7 @@ spec:
           mountPath: /data
       env:
         - name: INPUT_STREAMS
-          value: inbound-streams:input:id
+          value: inbound-stocks:input:id
         - name: OUTPUT_STREAMS
           value: filtered-stocks:output:stockname
         - name: APP_ID
@@ -56,6 +58,10 @@ spec:
           value: /data/function
         - name: FAAS_LOG
           value: "true"
+        - name: BUY_THRESHOLD
+          value: "0.05"
+        - name: SELL_THRESHOLD
+          value: "-0.05"
     - name: aggregator-engine-kafka
       image: docker.io/slinkydeveloper/engine-kafka
       imagePullPolicy: Never
