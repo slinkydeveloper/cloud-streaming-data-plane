@@ -30,35 +30,36 @@ impl StockState {
         }
     }
 
-    pub fn update(&self, last_value: f64, sell_threshold: &f64, buy_threshold: &f64) -> (StockUpdate, StockState) {
+    pub fn update(&self, new_value: f64, sell_threshold: &f64, buy_threshold: &f64) -> (StockUpdate, StockState) {
         match self.last_value {
             None => (StockUpdate::None, StockState {
                 name: self.name.clone(),
                 owned: self.owned,
-                last_value: Some(last_value),
+                last_value: Some(new_value),
                 coefficient: self.coefficient,
             }),
-            Some(val) => {
-                let new_coefficient = ((val / last_value) - 1f64) + self.coefficient;
-                if new_coefficient >= *buy_threshold {
+            Some(old_value) => {
+                let new_coefficient = ((new_value / old_value) - 1f64) + self.coefficient;
+                println!("({} / {}) - 1 + {} = {}", new_value, old_value, self.coefficient, new_coefficient);
+                if new_coefficient > 0f64 && new_coefficient >= *buy_threshold && !self.owned {
                     (StockUpdate::Buy, StockState {
                         name: self.name.clone(),
                         owned: true,
-                        last_value: Some(last_value),
+                        last_value: Some(new_value),
                         coefficient: new_coefficient,
                     })
-                } else if new_coefficient <= *sell_threshold {
+                } else if new_coefficient < 0f64 && new_coefficient <= *sell_threshold && self.owned {
                     (StockUpdate::Sell, StockState {
                         name: self.name.clone(),
                         owned: false,
-                        last_value: Some(last_value),
+                        last_value: Some(new_value),
                         coefficient: new_coefficient,
                     })
                 } else {
                     (StockUpdate::None, StockState {
                         name: self.name.clone(),
                         owned: self.owned,
-                        last_value: Some(last_value),
+                        last_value: Some(new_value),
                         coefficient: new_coefficient,
                     })
                 }

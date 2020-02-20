@@ -22,8 +22,8 @@ compile_rust demo-join-function
 build_image demo-join-function
 compile_rust demo-logger
 build_image demo-logger
-
 cd ..
+
 cd example-stock-flow
 compile_rust demo-stocks-filter
 build_image demo-stocks-filter

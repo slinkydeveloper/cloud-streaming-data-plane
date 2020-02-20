@@ -7,7 +7,7 @@ Content-Type: application/cloudevents+json
   "source": "http://external-system.com",
   "id": "0",
   "datacontenttype": "application/json",
-  "data": "{\"name\":\"ibm\",\"value\":130}"
+  "data": "{\"name\":\"ibm\",\"value\":20}"
 }
 
 ###
