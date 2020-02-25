@@ -1,0 +1,13 @@
+POST http://192.168.39.54:31113
+Content-Type: application/cloudevents+json
+
+{
+  "specversion": "1.0",
+  "type": "stocks.stocks-demo",
+  "source": "http://external-system.com",
+  "id": "0",
+  "datacontenttype": "application/json",
+  "data": "{\"name\":\"ibm\",\"value\":20}"
+}
+
+###

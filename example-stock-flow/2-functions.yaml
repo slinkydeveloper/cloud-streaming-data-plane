@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-stocks-filter
+spec:
+  volumes:
+    - name: uds-data
+      emptyDir: {}
+  containers:
+    - name: demo-stocks-filter
+      image: docker.io/slinkydeveloper/demo-stocks-filter
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: UNIX_DOMAIN_SOCKET
+          value: /data/function
+        - name: FAAS_LOG
+          value: "true"
+        - name: STOCKS
+          value: "rht,ibm"
+    - name: aggregator-engine-kafka
+      image: docker.io/slinkydeveloper/engine-kafka
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: INPUT_STREAMS
+          value: inbound-stocks:input:id
+        - name: OUTPUT_STREAMS
+          value: filtered-stocks:output:stockname
+        - name: APP_ID
+          value: "demo-stocks-filter"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-stocks-decisions
+spec:
+  volumes:
+    - name: uds-data
+      emptyDir: {}
+  containers:
+    - name: demo-stocks-decisions
+      image: docker.io/slinkydeveloper/demo-stocks-decisions
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: UNIX_DOMAIN_SOCKET
+          value: /data/function
+        - name: FAAS_LOG
+          value: "true"
+        - name: BUY_THRESHOLD
+          value: "0.05"
+        - name: SELL_THRESHOLD
+          value: "-0.05"
+    - name: aggregator-engine-kafka
+      image: docker.io/slinkydeveloper/engine-kafka
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: INPUT_STREAMS
+          value: filtered-stocks:input
+        - name: OUTPUT_STREAMS
+          value: decisions:output
+        - name: STATE_STREAM
+          value: state-stocks:state:stockname
+        - name: APP_ID
+          value: "demo-stocks-decisions"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+---
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-stocks-decisions-logger
+spec:
+  volumes:
+    - name: uds-data
+      emptyDir: {}
+  containers:
+    - name: demo-stocks-decisions-logger
+      image: docker.io/slinkydeveloper/demo-stocks-decisions-logger
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: UNIX_DOMAIN_SOCKET
+          value: /data/function
+        - name: FAAS_LOG
+          value: "true"
+    - name: aggregator-engine-kafka
+      image: docker.io/slinkydeveloper/engine-kafka
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: INPUT_STREAMS
+          value: decisions:input
+        - name: APP_ID
+          value: "demo-stocks-decisions-logger"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+

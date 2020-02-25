@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: joiner
+spec:
+  volumes:
+    - name: uds-data
+      emptyDir: {}
+  containers:
+    - name: aggregator-function
+      image: docker.io/slinkydeveloper/demo-join-function
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: UNIX_DOMAIN_SOCKET
+          value: /data/function
+        - name: FAAS_LOG
+          value: "true"
+    - name: aggregator-engine-kafka
+      image: docker.io/slinkydeveloper/engine-kafka
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: INPUT_STREAMS
+          value: inbound-a:x,inbound-b:y
+        - name: OUTPUT_STREAMS
+          value: positive,negative
+        - name: TIMEOUT
+          value: "PT5M"
+        - name: APP_ID
+          value: "demo_joiner"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+---
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: logger-positive
+spec:
+  volumes:
+    - name: uds-data
+      emptyDir: {}
+  containers:
+    - name: logger-function
+      image: docker.io/slinkydeveloper/demo-logger
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: UNIX_DOMAIN_SOCKET
+          value: /data/function
+        - name: FAAS_LOG
+          value: "true"
+    - name: aggregator-engine-kafka
+      image: docker.io/slinkydeveloper/engine-kafka
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: INPUT_STREAMS
+          value: positive:input
+        - name: APP_ID
+          value: "demo_logger_positive"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+---
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: logger-negative
+spec:
+  volumes:
+    - name: uds-data
+      emptyDir: {}
+  containers:
+    - name: logger-function
+      image: docker.io/slinkydeveloper/demo-logger
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: UNIX_DOMAIN_SOCKET
+          value: /data/function
+        - name: FAAS_LOG
+          value: "true"
+    - name: aggregator-engine-kafka
+      image: docker.io/slinkydeveloper/engine-kafka
+      imagePullPolicy: Never
+      volumeMounts:
+        - name: uds-data
+          mountPath: /data
+      env:
+        - name: INPUT_STREAMS
+          value: negative:input
+        - name: APP_ID
+          value: "demo_logger_negative"
+        - name: KAFKA_BROKERS
+          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+
+
