@@ -1,24 +1,24 @@
-package com.slinkydeveloper.cloud.streaming.engine.api;
+package com.slinkydeveloper.cloud.streaming.api;
 
 import java.util.Objects;
 
-public class InputStream {
+public class StateStream {
 
     private String name;
     private String metadataAsKey;
-    private String functionParameterName;
+    private String functionReturnName;
 
-    public InputStream(String name) {
+    public StateStream(String name) {
         this(name, null, null);
     }
 
-    public InputStream(String name, String functionParameterName, String metadataAsKey) {
+    public StateStream(String name, String functionReturnName, String metadataAsKey) {
         this.name = name;
         this.metadataAsKey = metadataAsKey;
-        if (functionParameterName != null) {
-            this.functionParameterName = functionParameterName;
+        if (functionReturnName != null) {
+            this.functionReturnName = functionReturnName;
         } else {
-            this.functionParameterName = name;
+            this.functionReturnName = name;
         }
     }
 
@@ -30,22 +30,22 @@ public class InputStream {
         return metadataAsKey;
     }
 
-    public String getFunctionParameterName() {
-        return functionParameterName;
+    public String getFunctionReturnName() {
+        return functionReturnName;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        InputStream that = (InputStream) o;
+        StateStream that = (StateStream) o;
         return Objects.equals(name, that.name) &&
             Objects.equals(metadataAsKey, that.metadataAsKey) &&
-            Objects.equals(functionParameterName, that.functionParameterName);
+            Objects.equals(functionReturnName, that.functionReturnName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, metadataAsKey, functionParameterName);
+        return Objects.hash(name, metadataAsKey, functionReturnName);
     }
 }

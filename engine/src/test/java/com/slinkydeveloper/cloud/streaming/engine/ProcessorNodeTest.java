@@ -1,9 +1,9 @@
-package com.slinkydeveloper.cloud.streaming.engine.aggregation.orchestrator;
+package com.slinkydeveloper.cloud.streaming.engine;
 
-import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
-import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.StateStream;
+import com.slinkydeveloper.cloud.streaming.api.InputStream;
+import com.slinkydeveloper.cloud.streaming.api.OutputStream;
+import com.slinkydeveloper.cloud.streaming.api.StateStream;
+import com.slinkydeveloper.cloud.streaming.engine.event.ProcessorNodeEvent;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.MockMessage;
 import io.cloudevents.CloudEvent;
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.fail;
 
 @ExtendWith(VertxExtension.class)
 @Timeout(value = 2, timeUnit = TimeUnit.SECONDS)
-public class AggregationOrchestratorTest {
+public class ProcessorNodeTest {
 
     private CloudEvent event1 = CloudEventBuilder
         .builder()
@@ -83,7 +83,7 @@ public class AggregationOrchestratorTest {
             return Future.succeededFuture(Collections.singletonMap("output", in.get("input")));
         };
 
-        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+        ProcessorNode orchestrator = new ProcessorNode(
             vertx,
             mockFunctionInvoker,
             Set.of(new InputStream("stream1", "input", null)),
@@ -101,7 +101,7 @@ public class AggregationOrchestratorTest {
             }
         );
 
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
+        orchestrator.onEvent(ProcessorNodeEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
     }
 
     @Test
@@ -128,7 +128,7 @@ public class AggregationOrchestratorTest {
             return Future.succeededFuture(Collections.singletonMap("output", in.get("input")));
         };
 
-        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+        ProcessorNode orchestrator = new ProcessorNode(
             vertx,
             mockFunctionInvoker,
             Set.of(new InputStream("stream1", "input", "id")),
@@ -146,7 +146,7 @@ public class AggregationOrchestratorTest {
             }
         );
 
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", "aaa", 0, ZonedDateTime.now(), event)));
+        orchestrator.onEvent(ProcessorNodeEvent.createNewMessageEvent(new MockMessage("stream1", "aaa", 0, ZonedDateTime.now(), event)));
     }
 
     @Test
@@ -164,7 +164,7 @@ public class AggregationOrchestratorTest {
             return Future.succeededFuture(Collections.emptyMap());
         };
 
-        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+        ProcessorNode orchestrator = new ProcessorNode(
             vertx,
             mockFunctionInvoker,
             Set.of(new InputStream("stream1")),
@@ -177,7 +177,7 @@ public class AggregationOrchestratorTest {
             }
         );
 
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
+        orchestrator.onEvent(ProcessorNodeEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
     }
 
     @Test
@@ -197,7 +197,7 @@ public class AggregationOrchestratorTest {
             return Future.succeededFuture(Collections.singletonMap("output", in.get("stream1")));
         };
 
-        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+        ProcessorNode orchestrator = new ProcessorNode(
             vertx,
             mockFunctionInvoker,
             Set.of(new InputStream("stream1"), new InputStream("stream2")),
@@ -215,8 +215,8 @@ public class AggregationOrchestratorTest {
             }
         );
 
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream2", key, 0, ZonedDateTime.now(), event2)));
+        orchestrator.onEvent(ProcessorNodeEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
+        orchestrator.onEvent(ProcessorNodeEvent.createNewMessageEvent(new MockMessage("stream2", key, 0, ZonedDateTime.now(), event2)));
     }
 
     @Test
@@ -257,7 +257,7 @@ public class AggregationOrchestratorTest {
             }
         };
 
-        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+        ProcessorNode orchestrator = new ProcessorNode(
             vertx,
             mockFunctionInvoker,
             Set.of(new InputStream("stream1")),
@@ -287,8 +287,8 @@ public class AggregationOrchestratorTest {
             }
         );
 
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
-        orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
+        orchestrator.onEvent(ProcessorNodeEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
+        orchestrator.onEvent(ProcessorNodeEvent.createNewMessageEvent(new MockMessage("stream1", key, 0, ZonedDateTime.now(), event1)));
     }
 
 }

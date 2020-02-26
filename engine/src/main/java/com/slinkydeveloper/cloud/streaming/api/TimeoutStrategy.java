@@ -1,4 +1,4 @@
-package com.slinkydeveloper.cloud.streaming.engine.api;
+package com.slinkydeveloper.cloud.streaming.api;
 
 public enum TimeoutStrategy {
     DROP,

@@ -1,24 +1,24 @@
-package com.slinkydeveloper.cloud.streaming.engine.api;
+package com.slinkydeveloper.cloud.streaming.api;
 
 import java.util.Objects;
 
-public class OutputStream {
+public class InputStream {
 
     private String name;
     private String metadataAsKey;
-    private String functionReturnName;
+    private String functionParameterName;
 
-    public OutputStream(String name) {
+    public InputStream(String name) {
         this(name, null, null);
     }
 
-    public OutputStream(String name, String functionReturnName, String metadataAsKey) {
+    public InputStream(String name, String functionParameterName, String metadataAsKey) {
         this.name = name;
         this.metadataAsKey = metadataAsKey;
-        if (functionReturnName != null) {
-            this.functionReturnName = functionReturnName;
+        if (functionParameterName != null) {
+            this.functionParameterName = functionParameterName;
         } else {
-            this.functionReturnName = name;
+            this.functionParameterName = name;
         }
     }
 
@@ -30,22 +30,22 @@ public class OutputStream {
         return metadataAsKey;
     }
 
-    public String getFunctionReturnName() {
-        return functionReturnName;
+    public String getFunctionParameterName() {
+        return functionParameterName;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        OutputStream that = (OutputStream) o;
+        InputStream that = (InputStream) o;
         return Objects.equals(name, that.name) &&
             Objects.equals(metadataAsKey, that.metadataAsKey) &&
-            Objects.equals(functionReturnName, that.functionReturnName);
+            Objects.equals(functionParameterName, that.functionParameterName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, metadataAsKey, functionReturnName);
+        return Objects.hash(name, metadataAsKey, functionParameterName);
     }
 }

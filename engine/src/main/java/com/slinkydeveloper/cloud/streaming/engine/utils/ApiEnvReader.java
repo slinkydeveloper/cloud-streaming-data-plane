@@ -1,9 +1,9 @@
 package com.slinkydeveloper.cloud.streaming.engine.utils;
 
-import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.StateStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.StreamProcessor;
+import com.slinkydeveloper.cloud.streaming.api.InputStream;
+import com.slinkydeveloper.cloud.streaming.api.OutputStream;
+import com.slinkydeveloper.cloud.streaming.api.StateStream;
+import com.slinkydeveloper.cloud.streaming.api.StreamProcessor;
 
 import java.time.Duration;
 import java.util.Arrays;

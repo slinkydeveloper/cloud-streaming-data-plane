@@ -1,9 +1,9 @@
 package com.slinkydeveloper.cloud.streaming.engine.kafka;
 
-import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
-import com.slinkydeveloper.cloud.streaming.engine.aggregation.orchestrator.AggregationOrchestrator;
-import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.StreamProcessor;
+import com.slinkydeveloper.cloud.streaming.api.InputStream;
+import com.slinkydeveloper.cloud.streaming.api.StreamProcessor;
+import com.slinkydeveloper.cloud.streaming.engine.ProcessorNode;
+import com.slinkydeveloper.cloud.streaming.engine.event.ProcessorNodeEvent;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.Message;
 import com.slinkydeveloper.cloud.streaming.engine.utils.ApiEnvReader;
@@ -50,7 +50,7 @@ public class KafkaEngineVerticle extends AbstractVerticle {
 
         KafkaProducer<String, byte[]> producer = KafkaProducer.createShared(vertx, "aggregator-" + appId, config);
 
-        AggregationOrchestrator orchestrator = new AggregationOrchestrator(
+        ProcessorNode processorNode = new ProcessorNode(
             vertx,
             FunctionInvoker.create(vertx),
             model.getInputStreams(),
@@ -63,7 +63,7 @@ public class KafkaEngineVerticle extends AbstractVerticle {
         KafkaConsumer<String, byte[]> consumer = KafkaConsumer.create(vertx, config);
         consumer.handler(stringKafkaConsumerRecord -> {
             Message message = new KafkaMessage(stringKafkaConsumerRecord);
-            orchestrator.onEvent(AggregatorEvent.createNewMessageEvent(message));
+            processorNode.onEvent(ProcessorNodeEvent.createNewMessageEvent(message));
         });
         consumer
             .subscribe(inputTopics)

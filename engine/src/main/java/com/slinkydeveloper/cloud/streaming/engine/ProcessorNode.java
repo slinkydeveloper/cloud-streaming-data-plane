@@ -1,10 +1,9 @@
-package com.slinkydeveloper.cloud.streaming.engine.aggregation.orchestrator;
+package com.slinkydeveloper.cloud.streaming.engine;
 
-import com.slinkydeveloper.cloud.streaming.engine.aggregation.Aggregation;
-import com.slinkydeveloper.cloud.streaming.engine.aggregation.event.AggregatorEvent;
-import com.slinkydeveloper.cloud.streaming.engine.api.InputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.OutputStream;
-import com.slinkydeveloper.cloud.streaming.engine.api.StateStream;
+import com.slinkydeveloper.cloud.streaming.api.InputStream;
+import com.slinkydeveloper.cloud.streaming.api.OutputStream;
+import com.slinkydeveloper.cloud.streaming.api.StateStream;
+import com.slinkydeveloper.cloud.streaming.engine.event.ProcessorNodeEvent;
 import com.slinkydeveloper.cloud.streaming.engine.function.FunctionInvoker;
 import com.slinkydeveloper.cloud.streaming.engine.messaging.Message;
 import com.slinkydeveloper.cloud.streaming.engine.utils.KeyExtractor;
@@ -22,15 +21,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-//TODO this is per partition -> Aggregation Orchestrator : Partition
-public class AggregationOrchestrator {
+//TODO doc this is per partition -> 1 ProcessorNode <-> 1 Partition
+public class ProcessorNode {
 
-    private static final Logger logger = LoggerFactory.getLogger(AggregationOrchestrator.class);
+    private static final Logger logger = LoggerFactory.getLogger(ProcessorNode.class);
 
     private Vertx vertx;
     private Map<String, HashMap<String, ArrayDeque<CloudEventQueueItem>>> waitingMessages;
     private Map<String, CloudEvent> lastState;
-    private List<Aggregation> runningAggregations;
+    private List<FunctionInvocation> runningFunctionInvocations;
 
     private Map<String, InputStream> inputStreams;
     private Map<String, OutputStream> returnValuesNamesToOutputStreams;
@@ -42,7 +41,7 @@ public class AggregationOrchestrator {
 
     private TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender;
 
-    public AggregationOrchestrator(Vertx vertx, FunctionInvoker functionInvokerImpl, Set<InputStream> inputStreams, Set<OutputStream> outputStreams, StateStream stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
+    public ProcessorNode(Vertx vertx, FunctionInvoker functionInvokerImpl, Set<InputStream> inputStreams, Set<OutputStream> outputStreams, StateStream stateStream, Duration timeout, TriFunction<String, String, CloudEvent<?, ?>, Future<Void>> eventSender) {
         this.vertx = vertx;
         this.returnValuesNamesToOutputStreams = outputStreams
             .stream()
@@ -54,12 +53,12 @@ public class AggregationOrchestrator {
         this.timeout = timeout;
         this.functionInvokerImpl = functionInvokerImpl;
         this.waitingMessages = new HashMap<>();
-        this.runningAggregations = new ArrayList<>();
+        this.runningFunctionInvocations = new ArrayList<>();
         this.eventSender = eventSender;
         this.lastState = new HashMap<>();
     }
 
-    public void onEvent(AggregatorEvent event) {
+    public void onEvent(ProcessorNodeEvent event) {
         logger.debug("New event {}", event);
         logActualState();
 
@@ -73,23 +72,23 @@ public class AggregationOrchestrator {
             removeMessage(buffer, stream, cloudEvent);
         });
 
-        event.onFunctionInvocationStart(aggregation -> {
-            this.runningAggregations.add(aggregation);
-            startAggregation(aggregation);
+        event.onFunctionInvocationStart(functionInvocation -> {
+            this.runningFunctionInvocations.add(functionInvocation);
+            startAggregation(functionInvocation);
         });
 
-        event.onFunctionInvocationEnded((aggregation, output) -> {
-            forwardAggregationResponse(aggregation, output);
-            this.runningAggregations.remove(aggregation);
+        event.onFunctionInvocationEnded((functionInvocation, output) -> {
+            forwardFunctionResponse(functionInvocation, output);
+            this.runningFunctionInvocations.remove(functionInvocation);
         });
 
-        event.onFunctionInvocationFailed((aggregation, throwable) -> {
+        event.onFunctionInvocationFailed((functionInvocation, throwable) -> {
             //TODO implement function invocation failure strategy
             handleFailure(throwable);
-            this.runningAggregations.remove(aggregation);
+            this.runningFunctionInvocations.remove(functionInvocation);
         });
 
-        event.onSendFailed((aggregation, throwable) -> {
+        event.onSendFailed((functionInvocation, throwable) -> {
             //TODO implement send failure strategy
             handleFailure(throwable);
         });
@@ -120,10 +119,10 @@ public class AggregationOrchestrator {
                 state = this.lastState.get(key);
             }
 
-            Aggregation aggregation = new Aggregation(key, aggregationInputMap, state);
+            FunctionInvocation functionInvocation = new FunctionInvocation(key, aggregationInputMap, state);
 
             // Trigger aggregation start
-            onEvent(AggregatorEvent.createFunctionInvocationStartEvent(aggregation));
+            onEvent(ProcessorNodeEvent.createFunctionInvocationStartEvent(functionInvocation));
         });
     }
 
@@ -149,7 +148,7 @@ public class AggregationOrchestrator {
         if (this.timeout != null) {
             long timerId = vertx.setTimer(this.timeout.toMillis(), h -> {
                 if (h != null) {
-                    onEvent(AggregatorEvent.createExpiredMessageEvent(message.key(), message.stream(), event));
+                    onEvent(ProcessorNodeEvent.createExpiredMessageEvent(message.key(), message.stream(), event));
                 }
             });
             waitingMessageForStream.push(new CloudEventQueueItem(event, timerId));
@@ -158,22 +157,22 @@ public class AggregationOrchestrator {
         }
     }
 
-    private void startAggregation(Aggregation aggregation) {
-        HashMap<String, CloudEvent> in = new HashMap<>(aggregation.getInput());
-        if (aggregation.getState() != null) {
-            in.put(stateStream.getFunctionReturnName(), aggregation.getState());
+    private void startAggregation(FunctionInvocation functionInvocation) {
+        HashMap<String, CloudEvent> in = new HashMap<>(functionInvocation.getInput());
+        if (functionInvocation.getState() != null) {
+            in.put(stateStream.getFunctionReturnName(), functionInvocation.getState());
         }
         functionInvokerImpl.call(in).setHandler(ar -> {
             if (ar.failed()) {
-                onEvent(AggregatorEvent.createFunctionInvocationFailedEvent(aggregation, ar.cause()));
+                onEvent(ProcessorNodeEvent.createFunctionInvocationFailEvent(functionInvocation, ar.cause()));
             } else {
-                onEvent(AggregatorEvent.createFunctionInvocationEndedEvent(aggregation, ar.result()));
+                onEvent(ProcessorNodeEvent.createFunctionInvocationEndEvent(functionInvocation, ar.result()));
             }
         });
     }
 
-    private void forwardAggregationResponse(Aggregation aggregation, Map<String, CloudEvent> out) {
-        logger.debug("Function invocation for key {} returned events {}", aggregation.getAggregationKey(), out.keySet());
+    private void forwardFunctionResponse(FunctionInvocation functionInvocation, Map<String, CloudEvent> out) {
+        logger.debug("Function invocation for key {} returned events {}", functionInvocation.getKey(), out.keySet());
 
         var outputEvents = out
             .entrySet()
@@ -183,13 +182,13 @@ public class AggregationOrchestrator {
             .map(e -> new AbstractMap.SimpleImmutableEntry<>(
                 new AbstractMap.SimpleImmutableEntry<>(
                     e.getKey().getName(),
-                    KeyExtractor.extractKey(e.getValue(), e.getKey().getMetadataAsKey(), aggregation.getAggregationKey())
+                    KeyExtractor.extractKey(e.getValue(), e.getKey().getMetadataAsKey(), functionInvocation.getKey())
                 ), e.getValue()
             ));
 
         if (stateStream != null && out.containsKey(stateStream.getFunctionReturnName())) {
             CloudEvent state = out.get(stateStream.getFunctionReturnName());
-            String stateKey = KeyExtractor.extractKey(state, stateStream.getMetadataAsKey(), aggregation.getAggregationKey());
+            String stateKey = KeyExtractor.extractKey(state, stateStream.getMetadataAsKey(), functionInvocation.getKey());
             updateState(stateKey, state);
             outputEvents =
                 Stream.concat(
