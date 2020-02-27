@@ -1,71 +1,15 @@
-apiVersion: v1
-kind: Service
+apiVersion: streaming.knative.dev/v1alpha1
+kind: Inbound
 metadata:
   name: inbound-a
 spec:
-  selector:
-    inbound: a
-  type: NodePort
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-      name: http
+  streamName: inbound-a
 
 ---
 
-apiVersion: v1
-kind: Pod
-metadata:
-  name: inbound-a
-  labels:
-    inbound: a
-spec:
-  containers:
-    - name: inbound
-      image: docker.io/slinkydeveloper/inbound-kafka
-      imagePullPolicy: Never
-      ports:
-        - containerPort: 8080
-      env:
-        - name: NAME # Stream name
-          value: inbound-a
-        - name: KAFKA_BROKERS
-          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
-
----
-
-apiVersion: v1
-kind: Service
+apiVersion: streaming.knative.dev/v1alpha1
+kind: Inbound
 metadata:
   name: inbound-b
 spec:
-  selector:
-    inbound: b
-  type: NodePort
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-      name: http
-
----
-
-apiVersion: v1
-kind: Pod
-metadata:
-  name: inbound-b
-  labels:
-    inbound: b
-spec:
-  containers:
-    - name: inbound
-      image: docker.io/slinkydeveloper/inbound-kafka
-      imagePullPolicy: Never
-      ports:
-        - containerPort: 8080
-      env:
-        - name: NAME # Stream name
-          value: inbound-b
-        - name: KAFKA_BROKERS
-          value: "my-cluster-kafka-bootstrap.kafka.svc:9092"
+  streamName: inbound-b

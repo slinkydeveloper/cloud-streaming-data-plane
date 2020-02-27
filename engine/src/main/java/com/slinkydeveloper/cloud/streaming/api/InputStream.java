@@ -14,11 +14,13 @@ public class InputStream {
 
     public InputStream(String name, String functionParameterName, String metadataAsKey) {
         this.name = name;
-        this.metadataAsKey = metadataAsKey;
-        if (functionParameterName != null) {
+        if (functionParameterName != null && functionParameterName.length() != 0) {
             this.functionParameterName = functionParameterName;
         } else {
             this.functionParameterName = name;
+        }
+        if (metadataAsKey != null && metadataAsKey.length() != 0) {
+            this.metadataAsKey = metadataAsKey;
         }
     }
 

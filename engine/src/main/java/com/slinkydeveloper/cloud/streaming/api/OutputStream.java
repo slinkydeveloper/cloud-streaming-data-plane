@@ -14,11 +14,13 @@ public class OutputStream {
 
     public OutputStream(String name, String functionReturnName, String metadataAsKey) {
         this.name = name;
-        this.metadataAsKey = metadataAsKey;
-        if (functionReturnName != null) {
+        if (functionReturnName != null && functionReturnName.length() != 0) {
             this.functionReturnName = functionReturnName;
         } else {
             this.functionReturnName = name;
+        }
+        if (metadataAsKey != null && metadataAsKey.length() != 0) {
+            this.metadataAsKey = metadataAsKey;
         }
     }
 
