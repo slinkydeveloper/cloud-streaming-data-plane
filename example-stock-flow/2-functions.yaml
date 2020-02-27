@@ -29,10 +29,10 @@ metadata:
 spec:
   input:
     - name: filtered-stocks
-      parameterName: input
+      parameterName: "input"
   output:
     - name: decisions
-      parameterName: output
+      parameterName: "output"
   state:
     name: state-stocks
     parameterName: state

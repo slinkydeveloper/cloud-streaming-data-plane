@@ -5,9 +5,9 @@ metadata:
 spec:
   input:
     - name: inbound-a
-      parameterName: x
+      parameterName: "x"
     - name: inbound-b
-      parameterName: y
+      parameterName: "y"
   output:
     - name: positive
     - name: negative
@@ -27,7 +27,7 @@ metadata:
 spec:
   input:
     - name: positive
-      parameterName: input
+      parameterName: "input"
   container:
     name: logger-function
     image: docker.io/slinkydeveloper/demo-logger
@@ -44,7 +44,7 @@ metadata:
 spec:
   input:
     - name: negative
-      parameterName: input
+      parameterName: "input"
   container:
     name: logger-function
     image: docker.io/slinkydeveloper/demo-logger
