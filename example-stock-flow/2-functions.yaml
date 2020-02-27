@@ -14,6 +14,7 @@ spec:
   container:
     name: demo-stocks-filter
     image: docker.io/slinkydeveloper/demo-stocks-filter
+    imagePullPolicy: Never
     env:
       - name: FAAS_LOG
         value: "true"
@@ -40,6 +41,7 @@ spec:
   container:
     name: demo-stocks-decisions
     image: docker.io/slinkydeveloper/demo-stocks-decisions
+    imagePullPolicy: Never
     env:
       - name: FAAS_LOG
         value: "true"
@@ -61,6 +63,7 @@ spec:
   container:
     name: demo-stocks-decisions-logger
     image: docker.io/slinkydeveloper/demo-stocks-decisions-logger
+    imagePullPolicy: Never
     env:
       - name: FAAS_LOG
         value: "true"

@@ -1,4 +1,4 @@
-POST http://192.168.39.54:31113
+POST http://localhost:8081
 Content-Type: application/cloudevents+json
 
 {
@@ -8,6 +8,34 @@ Content-Type: application/cloudevents+json
   "id": "0",
   "datacontenttype": "application/json",
   "data": "{\"name\":\"ibm\",\"value\":20}"
+}
+
+###
+
+POST http://localhost:8081
+Content-Type: application/cloudevents+json
+
+{
+  "specversion": "1.0",
+  "type": "stocks.stocks-demo",
+  "source": "http://external-system.com",
+  "id": "0",
+  "datacontenttype": "application/json",
+  "data": "{\"name\":\"rht\",\"value\":30}"
+}
+
+###
+
+POST http://localhost:8081
+Content-Type: application/cloudevents+json
+
+{
+  "specversion": "1.0",
+  "type": "stocks.stocks-demo",
+  "source": "http://external-system.com",
+  "id": "0",
+  "datacontenttype": "application/json",
+  "data": "{\"name\":\"rht\",\"value\":200}"
 }
 
 ###
